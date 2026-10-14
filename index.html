@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPO & PK Despatch Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF & AutoTable CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-emerald-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-2 sm:mb-0">
+                <i class="fa-solid fa-industry text-2xl text-emerald-300"></i>
+                <h1 class="text-xl font-bold tracking-wide">CPO & PK Despatch Management</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span id="current-date-display" class="text-xs bg-emerald-900 px-3 py-1.5 rounded-full font-medium text-emerald-200"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- Controls & Filters Section -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                <div class="flex items-center gap-2">
+                    <label for="month-filter" class="text-sm font-semibold text-gray-600"><i class="fa-solid fa-filter mr-1 text-emerald-600"></i> Month:</label>
+                    <select id="month-filter" class="bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2">
+                        <option value="all">All Months</option>
+                        <option value="2026-09" selected>September 2026</option>
+                        <option value="2026-10">October 2026</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label for="active-mill-filter" class="text-sm font-semibold text-gray-600"><i class="fa-solid fa-industry mr-1 text-emerald-600"></i> Mill View:</label>
+                    <select id="active-mill-filter" class="bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2">
+                        <option value="all">All Mills (Combined)</option>
+                        <option value="Biobest">Biobest</option>
+                        <option value="Delta">Delta</option>
+                        <option value="Suajaya">Suajaya</option>
+                        <option value="Southwind">Southwind</option>
+                        <option value="WTKOM">WTKOM</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Submit Mill Daily Data</span>
+                </button>
+                <button onclick="exportMonthlyPDF()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>Export PDF</span>
+                </button>
+                <button onclick="exportCSV()" class="bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Export CSV</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total CPO Trips</p>
+                    <h3 id="kpi-cpo-total" class="text-2xl font-bold text-gray-900 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                    <i class="fa-solid fa-oil-well text-xl"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total PK Trips</p>
+                    <h3 id="kpi-pk-total" class="text-2xl font-bold text-gray-900 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                    <i class="fa-solid fa-box-archive text-xl"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Combined Volume</p>
+                    <h3 id="kpi-combined-total" class="text-2xl font-bold text-gray-900 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <i class="fa-solid fa-truck-fast text-xl"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Active Days Logged</p>
+                    <h3 id="kpi-days-count" class="text-2xl font-bold text-gray-900 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-purple-50 text-purple-600 rounded-lg">
+                    <i class="fa-solid fa-calendar-days text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-md font-semibold text-gray-700 mb-4"><i class="fa-solid fa-chart-column text-emerald-600 mr-2"></i>Daily Despatch Trend (Trips)</h3>
+                <div class="relative h-64">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-md font-semibold text-gray-700 mb-4"><i class="fa-solid fa-chart-pie text-emerald-600 mr-2"></i>Volume Distribution by Mill</h3>
+                <div class="relative h-64">
+                    <canvas id="millChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables Section -->
+        <div class="space-y-6">
+            <!-- CPO Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800"><i class="fa-solid fa-droplet text-amber-500 mr-2"></i> 1. CPO Despatch (Trips)</h3>
+                    <span id="cpo-count-badge" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">0 records</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-gray-100/70 text-gray-600 font-semibold border-b border-gray-200">
+                                <th class="p-3 pl-5">Date</th>
+                                <th class="p-3">Biobest</th>
+                                <th class="p-3">Delta</th>
+                                <th class="p-3">Suajaya</th>
+                                <th class="p-3">Southwind</th>
+                                <th class="p-3">WTKOM</th>
+                                <th class="p-3 text-emerald-700 font-bold">Total CPO</th>
+                                <th class="p-3 pr-5 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cpo-table-body" class="divide-y divide-gray-100 text-gray-700">
+                            <!-- Populated Dynamically -->
+                        </tbody>
+                        <tfoot>
+                            <tr id="cpo-total-row" class="bg-gray-50 font-bold text-gray-900 border-t border-gray-200">
+                                <!-- Populated Dynamically -->
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PK Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800"><i class="fa-solid fa-cubes text-blue-500 mr-2"></i> 2. PK Despatch (Trips)</h3>
+                    <span id="pk-count-badge" class="text-xs bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full font-medium">0 records</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-gray-100/70 text-gray-600 font-semibold border-b border-gray-200">
+                                <th class="p-3 pl-5">Date</th>
+                                <th class="p-3">Biobest</th>
+                                <th class="p-3">Delta</th>
+                                <th class="p-3">Suajaya</th>
+                                <th class="p-3">Southwind</th>
+                                <th class="p-3">WTKOM</th>
+                                <th class="p-3 text-blue-700 font-bold">Total PK</th>
+                                <th class="p-3 pr-5 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pk-table-body" class="divide-y divide-gray-100 text-gray-700">
+                            <!-- Populated Dynamically -->
+                        </tbody>
+                        <tfoot>
+                            <tr id="pk-total-row" class="bg-gray-50 font-bold text-gray-900 border-t border-gray-200">
+                                <!-- Populated Dynamically -->
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal for Adding/Editing Record -->
+    <div id="record-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform transition-all">
+            <div class="bg-emerald-800 text-white px-6 py-4 flex justify-between items-center">
+                <h3 id="modal-title" class="font-bold text-lg"><i class="fa-solid fa-plus-circle mr-2"></i>Submit Daily Mill Data</h3>
+                <button onclick="closeModal()" class="text-emerald-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="despatch-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Select Mill</label>
+                        <select id="form-mill" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                            <option value="">-- Choose Mill --</option>
+                            <option value="Biobest">Biobest</option>
+                            <option value="Delta">Delta</option>
+                            <option value="Suajaya">Suajaya</option>
+                            <option value="Southwind">Southwind</option>
+                            <option value="WTKOM">WTKOM</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Record Date</label>
+                        <input type="date" id="form-date" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <!-- CPO Input Section for Selected Mill -->
+                <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-100 space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-amber-800"><i class="fa-solid fa-oil-well mr-1"></i> CPO Despatch Trips</h4>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Trips for Selected Mill</label>
+                        <input type="number" id="cpo-trips" min="0" value="0" required class="w-full bg-white border border-gray-300 rounded-lg p-2 text-sm text-center">
+                    </div>
+                </div>
+
+                <!-- PK Input Section for Selected Mill -->
+                <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-blue-800"><i class="fa-solid fa-box-archive mr-1"></i> PK Despatch Trips</h4>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Trips for Selected Mill</label>
+                        <input type="number" id="pk-trips" min="0" value="0" required class="w-full bg-white border border-gray-300 rounded-lg p-2 text-sm text-center">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow transition">Submit Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Initial Default Records Dataset (One row per date containing data from all mills)
+        const defaultRecords = [
+            { date: '2026-09-18', cpo: {biobest:0, delta:11, suajaya:4, southwind:0, wtkom:3}, pk: {biobest:1, delta:8, suajaya:0, southwind:4, wtkom:1} },
+            { date: '2026-09-19', cpo: {biobest:2, delta:9, suajaya:4, southwind:0, wtkom:4}, pk: {biobest:1, delta:0, suajaya:0, southwind:0, wtkom:1} },
+            { date: '2026-09-20', cpo: {biobest:2, delta:4, suajaya:3, southwind:2, wtkom:4}, pk: {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0} },
+            { date: '2026-09-21', cpo: {biobest:3, delta:6, suajaya:3, southwind:2, wtkom:3}, pk: {biobest:0, delta:2, suajaya:1, southwind:0, wtkom:2} },
+            { date: '2026-09-22', cpo: {biobest:0, delta:1, suajaya:3, southwind:0, wtkom:0}, pk: {biobest:1, delta:2, suajaya:2, southwind:2, wtkom:0} },
+            { date: '2026-09-23', cpo: {biobest:1, delta:12, suajaya:2, southwind:8, wtkom:4}, pk: {biobest:2, delta:2, suajaya:1, southwind:4, wtkom:2} },
+            { date: '2026-09-24', cpo: {biobest:6, delta:12, suajaya:4, southwind:0, wtkom:7}, pk: {biobest:1, delta:1, suajaya:0, southwind:1, wtkom:2} },
+            { date: '2026-09-25', cpo: {biobest:0, delta:1, suajaya:2, southwind:5, wtkom:8}, pk: {biobest:2, delta:3, suajaya:1, southwind:0, wtkom:2} },
+            { date: '2026-09-26', cpo: {biobest:6, delta:9, suajaya:3, southwind:5, wtkom:10}, pk: {biobest:2, delta:0, suajaya:2, southwind:0, wtkom:1} },
+            { date: '2026-09-27', cpo: {biobest:0, delta:2, suajaya:1, southwind:13, wtkom:0}, pk: {biobest:2, delta:2, suajaya:0, southwind:0, wtkom:1} },
+            { date: '2026-09-28', cpo: {biobest:3, delta:5, suajaya:3, southwind:9, wtkom:3}, pk: {biobest:1, delta:2, suajaya:2, southwind:10, wtkom:1} },
+            { date: '2026-09-29', cpo: {biobest:1, delta:3, suajaya:1, southwind:0, wtkom:21}, pk: {biobest:4, delta:1, suajaya:1, southwind:1, wtkom:3} },
+            { date: '2026-09-30', cpo: {biobest:1, delta:3, suajaya:1, southwind:0, wtkom:21}, pk: {biobest:4, delta:1, suajaya:1, southwind:1, wtkom:3} },
+            { date: '2026-10-01', cpo: {biobest:1, delta:3, suajaya:4, southwind:2, wtkom:1}, pk: {biobest:1, delta:1, suajaya:2, southwind:0, wtkom:0} },
+            { date: '2026-10-02', cpo: {biobest:4, delta:7, suajaya:2, southwind:1, wtkom:1}, pk: {biobest:2, delta:3, suajaya:2, southwind:0, wtkom:2} }
+        ];
+
+        let records = JSON.parse(localStorage.getItem('wtk_despatch_records')) || defaultRecords;
+        let trendChartInstance = null;
+        let millChartInstance = null;
+
+        document.getElementById('current-date-display').innerText = "Today: " + new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        document.getElementById('month-filter').addEventListener('change', renderDashboard);
+        document.getElementById('active-mill-filter').addEventListener('change', renderDashboard);
+
+        function saveData() {
+            localStorage.setItem('wtk_despatch_records', JSON.stringify(records));
+        }
+
+        function formatDateDisplay(dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            return dateStr;
+        }
+
+        function getFilteredRecords() {
+            const filterValue = document.getElementById('month-filter').value;
+            if (filterValue === 'all') return records;
+            return records.filter(r => r.date.startsWith(filterValue));
+        }
+
+        function renderDashboard() {
+            const currentRecords = getFilteredRecords().sort((a, b) => new Date(a.date) - new Date(b.date));
+            const selectedMillView = document.getElementById('active-mill-filter').value;
+            
+            const cpoTableBody = document.getElementById('cpo-table-body');
+            const pkTableBody = document.getElementById('pk-table-body');
+            cpoTableBody.innerHTML = '';
+            pkTableBody.innerHTML = '';
+
+            let totals = {
+                cpo: {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0, total:0},
+                pk: {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0, total:0}
+            };
+
+            currentRecords.forEach((item) => {
+                const globalIndex = records.findIndex(r => r.date === item.date);
+                const cpoTotal = item.cpo.biobest + item.cpo.delta + item.cpo.suajaya + item.cpo.southwind + item.cpo.wtkom;
+                const pkTotal = item.pk.biobest + item.pk.delta + item.pk.suajaya + item.pk.southwind + item.pk.wtkom;
+
+                totals.cpo.biobest += item.cpo.biobest;
+                totals.cpo.delta += item.cpo.delta;
+                totals.cpo.suajaya += item.cpo.suajaya;
+                totals.cpo.southwind += item.cpo.southwind;
+                totals.cpo.wtkom += item.cpo.wtkom;
+                totals.cpo.total += cpoTotal;
+
+                totals.pk.biobest += item.pk.biobest;
+                totals.pk.delta += item.pk.delta;
+                totals.pk.suajaya += item.pk.suajaya;
+                totals.pk.southwind += item.pk.southwind;
+                totals.pk.wtkom += item.pk.wtkom;
+                totals.pk.total += pkTotal;
+
+                const highlight = (millName) => selectedMillView === millName ? 'bg-emerald-50 font-semibold text-emerald-900' : '';
+
+                // CPO Row (All mills consolidated into the same row for this date)
+                cpoTableBody.innerHTML += `
+                    <tr class="hover:bg-gray-50/80 transition">
+                        <td class="p-3 pl-5 font-medium">${formatDateDisplay(item.date)}</td>
+                        <td class="p-3 ${highlight('Biobest')}">${item.cpo.biobest}</td>
+                        <td class="p-3 ${highlight('Delta')}">${item.cpo.delta}</td>
+                        <td class="p-3 ${highlight('Suajaya')}">${item.cpo.suajaya}</td>
+                        <td class="p-3 ${highlight('Southwind')}">${item.cpo.southwind}</td>
+                        <td class="p-3 ${highlight('WTKOM')}">${item.cpo.wtkom}</td>
+                        <td class="p-3 font-bold text-amber-700">${cpoTotal}</td>
+                        <td class="p-3 pr-5 text-center">
+                            <button onclick="editDateRecord(${globalIndex})" class="text-blue-600 hover:text-blue-800 mx-1" title="Edit with Permission"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteRecord(${globalIndex})" class="text-red-600 hover:text-red-800 mx-1" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+
+                // PK Row (All mills consolidated into the same row for this date)
+                pkTableBody.innerHTML += `
+                    <tr class="hover:bg-gray-50/80 transition">
+                        <td class="p-3 pl-5 font-medium">${formatDateDisplay(item.date)}</td>
+                        <td class="p-3 ${highlight('Biobest')}">${item.pk.biobest}</td>
+                        <td class="p-3 ${highlight('Delta')}">${item.pk.delta}</td>
+                        <td class="p-3 ${highlight('Suajaya')}">${item.pk.suajaya}</td>
+                        <td class="p-3 ${highlight('Southwind')}">${item.pk.southwind}</td>
+                        <td class="p-3 ${highlight('WTKOM')}">${item.pk.wtkom}</td>
+                        <td class="p-3 font-bold text-blue-700">${pkTotal}</td>
+                        <td class="p-3 pr-5 text-center">
+                            <button onclick="editDateRecord(${globalIndex})" class="text-blue-600 hover:text-blue-800 mx-1" title="Edit with Permission"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteRecord(${globalIndex})" class="text-red-600 hover:text-red-800 mx-1" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Totals Footers
+            document.getElementById('cpo-total-row').innerHTML = `
+                <td class="p-3 pl-5">Total</td>
+                <td class="p-3">${totals.cpo.biobest}</td>
+                <td class="p-3">${totals.cpo.delta}</td>
+                <td class="p-3">${totals.cpo.suajaya}</td>
+                <td class="p-3">${totals.cpo.southwind}</td>
+                <td class="p-3">${totals.cpo.wtkom}</td>
+                <td class="p-3 text-amber-700">${totals.cpo.total}</td>
+                <td></td>
+            `;
+
+            document.getElementById('pk-total-row').innerHTML = `
+                <td class="p-3 pl-5">Total</td>
+                <td class="p-3">${totals.pk.biobest}</td>
+                <td class="p-3">${totals.pk.delta}</td>
+                <td class="p-3">${totals.pk.suajaya}</td>
+                <td class="p-3">${totals.pk.southwind}</td>
+                <td class="p-3">${totals.pk.wtkom}</td>
+                <td class="p-3 text-blue-700">${totals.pk.total}</td>
+                <td></td>
+            `;
+
+            document.getElementById('cpo-count-badge').innerText = `${currentRecords.length} records`;
+            document.getElementById('pk-count-badge').innerText = `${currentRecords.length} records`;
+
+            // Update KPIs based on view
+            if (selectedMillView === 'all') {
+                document.getElementById('kpi-cpo-total').innerText = totals.cpo.total;
+                document.getElementById('kpi-pk-total').innerText = totals.pk.total;
+                document.getElementById('kpi-combined-total').innerText = totals.cpo.total + totals.pk.total;
+            } else {
+                const key = selectedMillView.toLowerCase();
+                const millCpo = totals.cpo[key] || 0;
+                const millPk = totals.pk[key] || 0;
+                document.getElementById('kpi-cpo-total').innerText = millCpo;
+                document.getElementById('kpi-pk-total').innerText = millPk;
+                document.getElementById('kpi-combined-total').innerText = millCpo + millPk;
+            }
+            document.getElementById('kpi-days-count').innerText = currentRecords.length;
+
+            updateCharts(currentRecords);
+        }
+
+        function updateCharts(currentRecords) {
+            const labels = currentRecords.map(r => formatDateDisplay(r.date));
+            const cpoData = currentRecords.map(r => r.cpo.biobest + r.cpo.delta + r.cpo.suajaya + r.cpo.southwind + r.cpo.wtkom);
+            const pkData = currentRecords.map(r => r.pk.biobest + r.pk.delta + r.pk.suajaya + r.pk.southwind + r.pk.wtkom);
+
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'CPO Trips', data: cpoData, backgroundColor: '#d97706', borderRadius: 4 },
+                        { label: 'PK Trips', data: pkData, backgroundColor: '#2563eb', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+            });
+
+            let millTotals = { Biobest: 0, Delta: 0, Suajaya: 0, Southwind: 0, WTKOM: 0 };
+            currentRecords.forEach(r => {
+                millTotals.Biobest += r.cpo.biobest + r.pk.biobest;
+                millTotals.Delta += r.cpo.delta + r.pk.delta;
+                millTotals.Suajaya += r.cpo.suajaya + r.pk.suajaya;
+                millTotals.Southwind += r.cpo.southwind + r.pk.southwind;
+                millTotals.WTKOM += r.cpo.wtkom + r.pk.wtkom;
+            });
+
+            const millCtx = document.getElementById('millChart').getContext('2d');
+            if (millChartInstance) millChartInstance.destroy();
+            millChartInstance = new Chart(millCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(millTotals),
+                    datasets: [{
+                        data: Object.values(millTotals),
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-plus-circle mr-2"></i>Submit Daily Mill Data';
+            document.getElementById('despatch-form').reset();
+            document.getElementById('form-date').valueAsDate = new Date();
+            document.getElementById('record-modal').classList.remove('hidden');
+        }
+
+        function editDateRecord(index) {
+            // Require user permission before editing/overwriting row data
+            if (!confirm("Permission Required: Are you authorized to modify existing data for this date row?")) {
+                return;
+            }
+
+            const item = records[index];
+            document.getElementById('form-mill').value = 'Biobest';
+            document.getElementById('form-date').value = item.date;
+            document.getElementById('cpo-trips').value = item.cpo.biobest;
+            document.getElementById('pk-trips').value = item.pk.biobest;
+            document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square mr-2"></i>Edit Date Record';
+            document.getElementById('record-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('record-modal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const targetDate = document.getElementById('form-date').value;
+            const targetMill = document.getElementById('form-mill').value.toLowerCase();
+            
+            const cpoVal = parseInt(document.getElementById('cpo-trips').value) || 0;
+            const pkVal = parseInt(document.getElementById('pk-trips').value) || 0;
+
+            // Check if a row for this date already exists
+            let existingRecordIndex = records.findIndex(r => r.date === targetDate);
+
+            if (existingRecordIndex !== -1) {
+                // Check if data for this specific mill already exists on this date
+                const currentMillCpo = records[existingRecordIndex].cpo[targetMill];
+                const currentMillPk = records[existingRecordIndex].pk[targetMill];
+
+                if (currentMillCpo > 0 || currentMillPk > 0) {
+                    const granted = confirm(`Permission Required: Data for ${document.getElementById('form-mill').value} on ${formatDateDisplay(targetDate)} already exists (${currentMillCpo} CPO, ${currentMillPk} PK). Do you have permission to update/overwrite it?`);
+                    if (!granted) {
+                        return; // Abort submission
+                    }
+                }
+
+                // Update the specific mill's data within the *same* row
+                records[existingRecordIndex].cpo[targetMill] = cpoVal;
+                records[existingRecordIndex].pk[targetMill] = pkVal;
+            } else {
+                // If date doesn't exist, create a new row with default zeros for all mills, setting the submitting mill's values
+                let newRecord = {
+                    date: targetDate,
+                    cpo: {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0},
+                    pk: {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0}
+                };
+                newRecord.cpo[targetMill] = cpoVal;
+                newRecord.pk[targetMill] = pkVal;
+                records.push(newRecord);
+            }
+
+            saveData();
+            closeModal();
+            renderDashboard();
+        }
+
+        function deleteRecord(index) {
+            if (confirm('Permission Required: Are you sure you want to delete this date entry?')) {
+                records.splice(index, 1);
+                saveData();
+                renderDashboard();
+            }
+        }
+
+        // Export Monthly PDF Function using jsPDF & AutoTable
+        function exportMonthlyPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const filterValue = document.getElementById('month-filter').value;
+            const currentRecords = getFilteredRecords().sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (currentRecords.length === 0) {
+                alert('No records found for the selected month to export.');
+                return;
+            }
+
+            let reportTitle = "CPO & PK Despatch Summary Report";
+            if (filterValue !== 'all') {
+                const [year, month] = filterValue.split('-');
+                const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                reportTitle = `CPO & PK Despatch Report - ${monthName}`;
+            }
+
+            // Header styling
+            doc.setFillColor(16, 124, 65);
+            doc.rect(0, 0, 210, 25, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text(reportTitle, 14, 16);
+
+            doc.setTextColor(100, 100, 100);
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')}`, 14, 33);
+
+            // Prepare CPO Table Data
+            let cpoBody = [];
+            let cpoTotals = {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0, total:0};
+
+            currentRecords.forEach(r => {
+                const total = r.cpo.biobest + r.cpo.delta + r.cpo.suajaya + r.cpo.southwind + r.cpo.wtkom;
+                cpoTotals.biobest += r.cpo.biobest;
+                cpoTotals.delta += r.cpo.delta;
+                cpoTotals.suajaya += r.cpo.suajaya;
+                cpoTotals.southwind += r.cpo.southwind;
+                cpoTotals.wtkom += r.cpo.wtkom;
+                cpoTotals.total += total;
+
+                cpoBody.push([formatDateDisplay(r.date), r.cpo.biobest, r.cpo.delta, r.cpo.suajaya, r.cpo.southwind, r.cpo.wtkom, total]);
+            });
+
+            cpoBody.push(['Total', cpoTotals.biobest, cpoTotals.delta, cpoTotals.suajaya, cpoTotals.southwind, cpoTotals.wtkom, cpoTotals.total]);
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(40, 40, 40);
+            doc.text('1. CPO Despatch (Trips)', 14, 42);
+
+            doc.autoTable({
+                startY: 46,
+                head: [['Date', 'Biobest', 'Delta', 'Suajaya', 'Southwind', 'WTKOM', 'Total CPO']],
+                body: cpoBody,
+                theme: 'grid',
+                headStyles: { fillColor: [217, 119, 6] },
+                footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+                styles: { fontSize: 9, halign: 'center' },
+                columnStyles: { 0: { halign: 'left' } }
+            });
+
+            // Prepare PK Table Data
+            let finalY = doc.lastAutoTable.finalY + 10;
+            let pkBody = [];
+            let pkTotals = {biobest:0, delta:0, suajaya:0, southwind:0, wtkom:0, total:0};
+
+            currentRecords.forEach(r => {
+                const total = r.pk.biobest + r.pk.delta + r.pk.suajaya + r.pk.southwind + r.pk.wtkom;
+                pkTotals.biobest += r.pk.biobest;
+                pkTotals.delta += r.pk.delta;
+                pkTotals.suajaya += r.pk.suajaya;
+                pkTotals.southwind += r.pk.southwind;
+                pkTotals.wtkom += r.pk.wtkom;
+                pkTotals.total += total;
+
+                pkBody.push([formatDateDisplay(r.date), r.pk.biobest, r.pk.delta, r.pk.suajaya, r.pk.southwind, r.pk.wtkom, total]);
+            });
+
+            pkBody.push(['Total', pkTotals.biobest, pkTotals.delta, pkTotals.suajaya, pkTotals.southwind, pkTotals.wtkom, pkTotals.total]);
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('2. PK Despatch (Trips)', 14, finalY);
+
+            doc.autoTable({
+                startY: finalY + 4,
+                head: [['Date', 'Biobest', 'Delta', 'Suajaya', 'Southwind', 'WTKOM', 'Total PK']],
+                body: pkBody,
+                theme: 'grid',
+                headStyles: { fillColor: [37, 99, 235] },
+                footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+                styles: { fontSize: 9, halign: 'center' },
+                columnStyles: { 0: { halign: 'left' } }
+            });
+
+            const filename = filterValue === 'all' ? 'CPO_PK_Despatch_All_Records.pdf' : `CPO_PK_Despatch_${filterValue}.pdf`;
+            doc.save(filename);
+        }
+
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Date,Type,Biobest,Delta,Suajaya,Southwind,WTKOM,Total\n";
+            getFilteredRecords().forEach(r => {
+                const cpoTotal = r.cpo.biobest + r.cpo.delta + r.cpo.suajaya + r.cpo.southwind + r.cpo.wtkom;
+                const pkTotal = r.pk.biobest + r.pk.delta + r.pk.suajaya + r.pk.southwind + r.pk.wtkom;
+                csvContent += `${r.date},CPO,${r.cpo.biobest},${r.cpo.delta},${r.cpo.suajaya},${r.cpo.southwind},${r.cpo.wtkom},${cpoTotal}\n`;
+                csvContent += `${r.date},PK,${r.pk.biobest},${r.pk.delta},${r.pk.suajaya},${r.pk.southwind},${r.pk.wtkom},${pkTotal}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "wtk_despatch_records.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initialize App on Load
+        renderDashboard();
+    </script>
+</body>
+</html>
